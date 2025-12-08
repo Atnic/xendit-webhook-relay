@@ -16,9 +16,16 @@ describe('Webhook Relay Handler', () => {
     // Setup axios mock
     mock = new MockAdapter(axios);
     
-    // Mock request object
+    // Mock request object with async iterator for body
     req = {
-      method: 'GET',
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-callback-token': 'test-token',
+      },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from('{"id":"test-123","status":"PAID"}');
+      },
     };
     
     // Mock response object
@@ -37,8 +44,8 @@ describe('Webhook Relay Handler', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return 405 for non-GET requests', async () => {
-    req.method = 'POST';
+  it('should return 405 for non-POST requests', async () => {
+    req.method = 'GET';
     
     await handler(req, res);
     
@@ -47,8 +54,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 200 when at least one target succeeds', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(200);
-    mock.onGet('https://app2.dev/xendit').reply(404);
+    mock.onPost('https://app1.dev/xendit').reply(200);
+    mock.onPost('https://app2.dev/xendit').reply(404);
     
     await handler(req, res);
     
@@ -57,8 +64,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 500 when all targets return 404', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(404);
-    mock.onGet('https://app2.dev/xendit').reply(404);
+    mock.onPost('https://app1.dev/xendit').reply(404);
+    mock.onPost('https://app2.dev/xendit').reply(404);
     
     await handler(req, res);
     
@@ -67,8 +74,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 500 when all targets return 5xx errors', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(500);
-    mock.onGet('https://app2.dev/xendit').reply(503);
+    mock.onPost('https://app1.dev/xendit').reply(500);
+    mock.onPost('https://app2.dev/xendit').reply(503);
     
     await handler(req, res);
     
@@ -77,8 +84,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 500 when targets have mixed failures (404 and 5xx)', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(404);
-    mock.onGet('https://app2.dev/xendit').reply(500);
+    mock.onPost('https://app1.dev/xendit').reply(404);
+    mock.onPost('https://app2.dev/xendit').reply(500);
     
     await handler(req, res);
     
@@ -87,8 +94,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 200 when one succeeds despite other failures', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(200);
-    mock.onGet('https://app2.dev/xendit').reply(500);
+    mock.onPost('https://app1.dev/xendit').reply(200);
+    mock.onPost('https://app2.dev/xendit').reply(500);
     
     await handler(req, res);
     
@@ -97,8 +104,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 500 when all targets timeout', async () => {
-    mock.onGet('https://app1.dev/xendit').timeout();
-    mock.onGet('https://app2.dev/xendit').timeout();
+    mock.onPost('https://app1.dev/xendit').timeout();
+    mock.onPost('https://app2.dev/xendit').timeout();
     
     await handler(req, res);
     
@@ -107,8 +114,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 200 when all targets succeed', async () => {
-    mock.onGet('https://app1.dev/xendit').reply(200);
-    mock.onGet('https://app2.dev/xendit').reply(200);
+    mock.onPost('https://app1.dev/xendit').reply(200);
+    mock.onPost('https://app2.dev/xendit').reply(200);
     
     await handler(req, res);
     
@@ -117,8 +124,8 @@ describe('Webhook Relay Handler', () => {
   });
 
   it('should return 500 when network errors occur', async () => {
-    mock.onGet('https://app1.dev/xendit').networkError();
-    mock.onGet('https://app2.dev/xendit').networkError();
+    mock.onPost('https://app1.dev/xendit').networkError();
+    mock.onPost('https://app2.dev/xendit').networkError();
     
     await handler(req, res);
     
