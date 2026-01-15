@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       try {
         const response = await axios.post(url, payload, { 
           headers: headersToForward,
-          timeout: 5000 
+          timeout: 50000 
         });
         console.log(`✓ ${url} returned ${response.status}`);
         return { url, success: true, status: response.status };
